@@ -1,13 +1,15 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, status
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
-
+from typing import List
 from core.database import get_db
 from modules.messaging.sockets import ConnectionManager
 from modules.messaging import models as msg_models
 from modules.groups.models import Group
 from modules.auth.models import User
 from modules.auth.router import get_current_user_ws
+from modules.auth.router import get_current_user # Autenticación HTTP estándar
+from modules.messaging import schemas as msg_schemas
 
 router = APIRouter(prefix="/ws", tags=["Mensajería en Tiempo Real"])
 
@@ -67,3 +69,29 @@ async def websocket_endpoint(
         manager.disconnect(websocket, group_id)
         # Opcional: Emitir evento de desconexión del sistema
         # await manager.broadcast_to_group(group_id, {"system": f"Usuario {current_user.username} desconectado."})
+
+@router.get("/groups/{group_id}/messages", response_model=List[msg_schemas.MessageResponse])
+def get_group_message_history(
+    group_id: int,
+    limit: int = 50, # Paginación por defecto: últimos 50 mensajes
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 1. Autorización: Verificar que el grupo exista y el usuario sea miembro
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Grupo no encontrado")
+    
+    if current_user not in group.members:
+        raise HTTPException(status_code=403, detail="No tienes acceso al historial de este grupo")
+
+    # 2. Consulta ORM: Obtener mensajes ordenados por fecha descendente (más recientes primero)
+    messages = (
+        db.query(msg_models.Message)
+        .filter(msg_models.Message.group_id == group_id)
+        .order_by(msg_models.Message.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    
+    return messages
