@@ -13,6 +13,7 @@ from modules.auth.router import get_current_user_ws
 from modules.auth.router import get_current_user # Autenticación HTTP estándar
 from modules.messaging import schemas as msg_schemas
 from uuid import uuid4
+from sqlalchemy.orm import selectinload
 
 router = APIRouter(prefix="/ws", tags=["Mensajería en Tiempo Real"])
 
@@ -123,9 +124,9 @@ async def websocket_endpoint(
 @router.get("/groups/{group_id}/messages", response_model=List[msg_schemas.MessageResponse])
 def get_group_message_history(
     group_id: int,
-    limit: int = 50, # Paginación por defecto: últimos 50 mensajes
+    limit: int = 50,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user) # Autenticación HTTP estándar
 ):
     # 1. Autorización: Verificar que el grupo exista y el usuario sea miembro
     group = db.query(Group).filter(Group.id == group_id).first()
@@ -135,10 +136,11 @@ def get_group_message_history(
     if current_user not in group.members:
         raise HTTPException(status_code=403, detail="No tienes acceso al historial de este grupo")
 
-    # 2. Consulta ORM: Obtener mensajes ordenados por fecha descendente (más recientes primero)
+    # 2. Consulta ORM optimizada con Eager Loading
     messages = (
         db.query(msg_models.Message)
         .filter(msg_models.Message.group_id == group_id)
+        .options(selectinload(msg_models.Message.receipts)) # Usa el backref de tu models.py
         .order_by(msg_models.Message.created_at.desc())
         .limit(limit)
         .all()

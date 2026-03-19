@@ -1,6 +1,14 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
+
+class MessageReceiptResponse(BaseModel):
+    user_id: int
+    delivered_at: Optional[datetime]
+    read_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
 
 class MessageResponse(BaseModel):
     id: int
@@ -9,6 +17,8 @@ class MessageResponse(BaseModel):
     sender_id: int
     group_id: int
     created_at: datetime
+    # Pydantic mapeará automáticamente el backref "receipts" a esta lista
+    receipts: List[MessageReceiptResponse] = [] 
 
     class Config:
         from_attributes = True
