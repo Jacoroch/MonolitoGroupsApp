@@ -10,12 +10,18 @@ from modules.messaging import models as messaging_models
 from modules.auth.router import router as auth_router
 from modules.groups.router import router as groups_router
 from modules.messaging.router import router as messaging_router
+# --- Importación de manejo de archivos (pdf, imagenes, etc) ---
+from fastapi.staticfiles import StaticFiles 
 
 # Ejecución DDL: Crea las tablas si no existen en PostgreSQL
 Base.metadata.create_all(bind=engine)
 
 # Instanciación de la aplicación FastAPI
 app = FastAPI(title="GroupsApp API", version="1.0")
+
+# --- Servir archivos estáticos ---
+# Esto permite que si alguien visita /static/foto.jpg, el servidor le entregue el archivo
+app.mount("/static", StaticFiles(directory="uploads"), name="static")
 
 # --- Registro de sub-aplicaciones (Routers) ---
 app.include_router(auth_router)
