@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Registro</title>
+</head>
+
+<body>
+
+    <h1>Crear cuenta</h1>
+
+    <form id="signupForm">
+        <input type="text" id="username" placeholder="Usuario" required>
+        <br><br>
+
+        <input type="email" id="email" placeholder="Correo" required>
+        <br><br>
+
+        <input type="password" id="password" placeholder="Contraseña" required>
+        <br><br>
+
+        <button type="submit">Registrarse</button>
+    </form>
+
+    <br>
+    <a href="/login">¿Ya tienes cuenta? Inicia sesión</a>
+
+    <script>
+        function parseJwt(token) {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+                atob(base64)
+                .split('')
+                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+            );
+            return JSON.parse(jsonPayload);
+        }
+
+        const form = document.getElementById("signupForm");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById("username").value;
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            // 🔥 1. REGISTRO
+            const registerResponse = await fetch("/auth/register", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ username, email, password })
+            });
+
+            if (!registerResponse.ok) {
+                alert("Error en el registro");
+                return;
+            }
+
+            // 🔥 2. LOGIN AUTOMÁTICO
+            const formData = new FormData();
+            formData.append("username", username);
+            formData.append("password", password);
+
+            const loginResponse = await fetch("/auth/login", {
+                method: "POST",
+                body: formData
+            });
+
+            if (!loginResponse.ok) {
+                alert("Error en login automático");
+                return;
+            }
+
+            const data = await loginResponse.json();
+            const token = data.access_token;
+
+            // 🔥 3. DECODIFICAR JWT
+            const decoded = parseJwt(token);
+
+            // 🔥 4. GUARDAR SESIÓN
+            sessionStorage.setItem("user_id", decoded.sub);
+            sessionStorage.setItem("token", token);
+
+            console.log("User ID:", decoded.sub);
+
+            // 🔥 5. REDIRECCIÓN
+            window.location.href = "/chats";
+        });
+    </script>
+
+</body>
+
+</html>
