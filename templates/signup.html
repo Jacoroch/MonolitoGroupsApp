@@ -4,27 +4,176 @@
 <head>
     <meta charset="UTF-8">
     <title>Registro</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #020617, #0f172a);
+            color: #e2e8f0;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            width: 360px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.5s ease;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #22c55e;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            outline: none;
+            background: #0f172a;
+            color: white;
+            font-size: 14px;
+        }
+
+        input:focus {
+            border: 1px solid #22c55e;
+        }
+
+        .toggle-pass {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            background: #22c55e;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #16a34a;
+        }
+
+        .link {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .link a {
+            color: #22c55e;
+            text-decoration: none;
+        }
+
+        .link a:hover {
+            text-decoration: underline;
+        }
+
+        .error {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            background: #7f1d1d;
+            color: #fecaca;
+            font-size: 13px;
+            display: none;
+            text-align: center;
+        }
+
+        .success {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            background: #14532d;
+            color: #bbf7d0;
+            font-size: 13px;
+            display: none;
+            text-align: center;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+
 </head>
 
 <body>
 
-    <h1>Crear cuenta</h1>
+    <div class="card">
 
-    <form id="signupForm">
-        <input type="text" id="username" placeholder="Usuario" required>
-        <br><br>
+        <h1>Crear cuenta</h1>
 
-        <input type="email" id="email" placeholder="Correo" required>
-        <br><br>
+        <form id="signupForm">
 
-        <input type="password" id="password" placeholder="Contraseña" required>
-        <br><br>
+            <div class="input-group">
+                <input type="text" id="username" placeholder="Usuario" required>
+            </div>
 
-        <button type="submit">Registrarse</button>
-    </form>
+            <div class="input-group">
+                <input type="email" id="email" placeholder="Correo" required>
+            </div>
 
-    <br>
-    <a href="/login">¿Ya tienes cuenta? Inicia sesión</a>
+            <div class="input-group">
+                <input type="password" id="password" placeholder="Contraseña" required>
+                <span class="toggle-pass" onclick="togglePassword()">👁</span>
+            </div>
+
+            <div class="input-group">
+                <input type="password" id="confirmPassword" placeholder="Confirmar contraseña" required>
+                <span class="toggle-pass" onclick="togglePassword2()">👁</span>
+            </div>
+
+            <button type="submit">Registrarse</button>
+
+            <div id="errorMsg" class="error"></div>
+            <div id="successMsg" class="success">Cuenta creada correctamente</div>
+
+        </form>
+
+        <div class="link">
+            ¿Ya tienes cuenta? <a href="/login">Inicia sesión</a>
+        </div>
+
+    </div>
 
     <script>
         function parseJwt(token) {
@@ -32,23 +181,44 @@
             const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
             const jsonPayload = decodeURIComponent(
                 atob(base64)
-                .split('')
-                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-                .join('')
+                    .split('')
+                    .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                    .join('')
             );
             return JSON.parse(jsonPayload);
         }
 
+        function togglePassword() {
+            const pass = document.getElementById("password");
+            pass.type = pass.type === "password" ? "text" : "password";
+        }
+
+        function togglePassword2() {
+            const pass = document.getElementById("confirmPassword");
+            pass.type = pass.type === "password" ? "text" : "password";
+        }
+
         const form = document.getElementById("signupForm");
+        const errorMsg = document.getElementById("errorMsg");
+        const successMsg = document.getElementById("successMsg");
 
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
 
+            errorMsg.style.display = "none";
+            successMsg.style.display = "none";
+
             const username = document.getElementById("username").value;
             const email = document.getElementById("email").value;
             const password = document.getElementById("password").value;
+            const confirmPassword = document.getElementById("confirmPassword").value;
 
-            // 🔥 1. REGISTRO
+            if (password !== confirmPassword) {
+                errorMsg.innerText = "Las contraseñas no coinciden";
+                errorMsg.style.display = "block";
+                return;
+            }
+
             const registerResponse = await fetch("/auth/register", {
                 method: "POST",
                 headers: {
@@ -58,11 +228,13 @@
             });
 
             if (!registerResponse.ok) {
-                alert("Error en el registro");
+                errorMsg.innerText = "Error en el registro";
+                errorMsg.style.display = "block";
                 return;
             }
 
-            // 🔥 2. LOGIN AUTOMÁTICO
+            successMsg.style.display = "block";
+
             const formData = new FormData();
             formData.append("username", username);
             formData.append("password", password);
@@ -73,24 +245,22 @@
             });
 
             if (!loginResponse.ok) {
-                alert("Error en login automático");
+                errorMsg.innerText = "Error en login automático";
+                errorMsg.style.display = "block";
                 return;
             }
 
             const data = await loginResponse.json();
             const token = data.access_token;
 
-            // 🔥 3. DECODIFICAR JWT
             const decoded = parseJwt(token);
 
-            // 🔥 4. GUARDAR SESIÓN
             sessionStorage.setItem("user_id", decoded.sub);
             sessionStorage.setItem("token", token);
 
-            console.log("User ID:", decoded.sub);
-
-            // 🔥 5. REDIRECCIÓN
-            window.location.href = "/chats";
+            setTimeout(() => {
+                window.location.href = "/chats";
+            }, 800);
         });
     </script>
 

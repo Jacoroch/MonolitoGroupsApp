@@ -33,6 +33,18 @@ def create_group(
 
     return new_group
 
+@router.get("/users/search")
+def search_user(username: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == username).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    return {
+        "id": user.id,
+        "username": user.username
+    }
+
 @router.post("/{group_id}/members")
 def add_member_to_group(
     group_id: int, 
@@ -63,3 +75,65 @@ def add_member_to_group(
     db.commit()
     
     return {"mensaje": f"Usuario {user_to_add.username} añadido al grupo {group.name} con éxito"}
+
+@router.get("/my-groups")
+def get_my_groups(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return [
+        {
+            "id": group.id,
+            "name": group.name
+        }
+        for group in current_user.groups
+    ]
+
+@router.get("/{group_id}/members")
+def get_group_members(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    group = db.query(models.Group).filter(models.Group.id == group_id).first()
+
+    if not group:
+        raise HTTPException(status_code=404, detail="Grupo no encontrado")
+
+    if current_user not in group.members:
+        raise HTTPException(status_code=403, detail="No perteneces a este grupo")
+
+    return {
+        "members": [
+            {
+                "id": user.id,
+                "username": user.username,
+                "is_admin": user.id == group.admin_id
+            }
+            for user in group.members
+        ],
+        "admin_id": group.admin_id,
+        "current_user_id": current_user.id
+    }
+
+@router.delete("/{group_id}/members/{user_id}")
+def remove_member(
+    group_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    group = db.query(models.Group).filter(models.Group.id == group_id).first()
+
+    if group.admin_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Solo admin")
+
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if user not in group.members:
+        raise HTTPException(status_code=404, detail="No está en el grupo")
+
+    group.members.remove(user)
+    db.commit()
+
+    return {"msg": "Usuario eliminado"}

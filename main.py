@@ -52,3 +52,11 @@ def signup_view(request: Request):
 @app.get("/chats", response_class=HTMLResponse)
 def chats_view(request: Request):
     return templates.TemplateResponse("chats.html", {"request": request})
+
+@app.get("/create-group", response_class=HTMLResponse)
+def create_group_view(request: Request):
+    return templates.TemplateResponse("create_group.html", {"request": request})
+
+@app.get("/edit-group", response_class=HTMLResponse)
+def create_group_view(request: Request):
+    return templates.TemplateResponse("edit_group.html", {"request": request})

@@ -4,24 +4,147 @@
 <head>
     <meta charset="UTF-8">
     <title>Login</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #020617, #0f172a);
+            color: #e2e8f0;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            width: 340px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.5s ease;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #22c55e;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            outline: none;
+            background: #0f172a;
+            color: white;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        input:focus {
+            border: 1px solid #22c55e;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            background: #22c55e;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #16a34a;
+        }
+
+        .link {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .link a {
+            color: #22c55e;
+            text-decoration: none;
+        }
+
+        .link a:hover {
+            text-decoration: underline;
+        }
+
+        .error {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            background: #7f1d1d;
+            color: #fecaca;
+            font-size: 13px;
+            display: none;
+            text-align: center;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+
 </head>
 
 <body>
 
-    <h1>Iniciar Sesión</h1>
+    <div class="card">
 
-    <form id="loginForm">
-        <input type="text" name="username" placeholder="Usuario" required>
-        <br><br>
+        <h1>Iniciar Sesión</h1>
 
-        <input type="password" name="password" placeholder="Contraseña" required>
-        <br><br>
+        <form id="loginForm">
 
-        <button type="submit">Entrar</button>
-    </form>
+            <div class="input-group">
+                <input type="text" name="username" placeholder="Usuario" required>
+            </div>
 
-    <br>
-    <a href="/signup">¿No tienes cuenta? Regístrate</a>
+            <div class="input-group">
+                <input type="password" name="password" placeholder="Contraseña" required>
+            </div>
+
+            <button type="submit">Entrar</button>
+
+            <div id="errorMsg" class="error">
+                Credenciales incorrectas
+            </div>
+
+        </form>
+
+        <div class="link">
+            ¿No tienes cuenta? <a href="/signup">Regístrate</a>
+        </div>
+
+    </div>
 
     <script>
         function parseJwt(token) {
@@ -38,9 +161,12 @@
         }
 
         const form = document.getElementById("loginForm");
+        const errorMsg = document.getElementById("errorMsg");
 
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
+
+            errorMsg.style.display = "none";
 
             const formData = new FormData(form);
 
@@ -53,17 +179,14 @@
                 const data = await response.json();
 
                 const token = data.access_token;
-
                 const decoded = parseJwt(token);
 
                 sessionStorage.setItem("user_id", decoded.sub);
                 sessionStorage.setItem("token", token);
 
-                console.log("User ID:", decoded.sub);
-
                 window.location.href = "/chats";
             } else {
-                alert("Credenciales incorrectas");
+                errorMsg.style.display = "block";
             }
         });
     </script>

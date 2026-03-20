@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Grupo</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: #020617;
+            color: #e2e8f0;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #22c55e;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        h2,
+        h3 {
+            margin-bottom: 10px;
+        }
+
+        .member {
+            background: #0f172a;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin {
+            color: #22c55e;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            margin-bottom: 10px;
+            background: #0f172a;
+            color: white;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 10px;
+            background: #22c55e;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #16a34a;
+        }
+
+        .remove-btn {
+            background: #7f1d1d;
+        }
+
+        .remove-btn:hover {
+            background: #991b1b;
+        }
+
+        .message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            display: none;
+            font-size: 13px;
+        }
+
+        .success {
+            background: #14532d;
+            color: #bbf7d0;
+        }
+
+        .error {
+            background: #7f1d1d;
+            color: #fecaca;
+        }
+
+        a {
+            color: #22c55e;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>Editar Grupo 👥</h1>
+
+        <!-- MIEMBROS -->
+        <div class="card">
+            <h2>Miembros</h2>
+            <div id="membersList"></div>
+        </div>
+
+        <!-- AGREGAR USUARIO -->
+        <div class="card">
+            <h3>Agregar usuario</h3>
+
+            <div class="row">
+                <input type="text" id="usernameInput" placeholder="username">
+                <button onclick="addUser()">Agregar</button>
+            </div>
+
+            <div id="msg" class="message"></div>
+        </div>
+
+        <a href="/chats">⬅ Volver</a>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        const token = sessionStorage.getItem("token");
+        const urlParams = new URLSearchParams(window.location.search);
+        const groupId = urlParams.get("group_id");
+
+        let members = [];
+
+        const msg = document.getElementById("msg");
+
+        function showMessage(text, type) {
+            msg.innerText = text;
+            msg.className = "message " + type;
+            msg.style.display = "block";
+
+            setTimeout(() => msg.style.display = "none", 3000);
+        }
+
+        async function loadMembers() {
+            const response = await fetch(`/groups/${groupId}/members`, {
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+
+            const data = await response.json();
+            members = data.members;
+
+            const list = document.getElementById("membersList");
+            list.innerHTML = "";
+
+            members.forEach(user => {
+                const div = document.createElement("div");
+                div.classList.add("member");
+
+                div.innerHTML = `
+                <span class="${user.is_admin ? 'admin' : ''}">
+                    ${user.username} ${user.is_admin ? '(admin)' : ''}
+                </span>
+                ${!user.is_admin ? '<button class="remove-btn">❌</button>' : ''}
+            `;
+
+                if (!user.is_admin) {
+                    div.querySelector("button").onclick = () => removeUser(user.id);
+                }
+
+                list.appendChild(div);
+            });
+        }
+
+        async function removeUser(userId) {
+
+            const confirm = await Swal.fire({
+                title: "¿Eliminar usuario?",
+                text: "Esta acción no se puede deshacer",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#dc2626",
+                cancelButtonColor: "#334155",
+                confirmButtonText: "Sí, eliminar",
+                cancelButtonText: "Cancelar",
+                background: "#1e293b",
+                color: "#e2e8f0"
+            });
+
+            if (!confirm.isConfirmed) return;
+
+            const response = await fetch(`/groups/${groupId}/members/${userId}`, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+
+            if (response.ok) {
+
+                Swal.fire({
+                    title: "Eliminado",
+                    text: "El usuario fue eliminado correctamente",
+                    icon: "success",
+                    confirmButtonColor: "#22c55e",
+                    background: "#1e293b",
+                    color: "#e2e8f0"
+                });
+
+                loadMembers();
+
+            } else {
+
+                Swal.fire({
+                    title: "Error",
+                    text: "No se pudo eliminar el usuario",
+                    icon: "error",
+                    confirmButtonColor: "#dc2626",
+                    background: "#1e293b",
+                    color: "#e2e8f0"
+                });
+
+            }
+        }
+
+        async function addUser() {
+            const username = document.getElementById("usernameInput").value;
+
+            const res = await fetch(`/groups/users/search?username=${username}`);
+            if (!res.ok) {
+                showMessage("Usuario no existe", "error");
+                return;
+            }
+
+            const user = await res.json();
+
+            const response = await fetch(`/groups/${groupId}/members`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({ user_id: user.id })
+            });
+
+            if (response.ok) {
+                showMessage("Usuario agregado ✅", "success");
+                loadMembers();
+            } else {
+                showMessage("Error agregando usuario", "error");
+            }
+        }
+
+        loadMembers();
+    </script>
+
+</body>
+
+</html>
