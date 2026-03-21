@@ -22,3 +22,7 @@ class MessageResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class MessageCreate(BaseModel):
+    content: str | None = None
+    media_url: str | None = None

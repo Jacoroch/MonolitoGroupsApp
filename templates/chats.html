@@ -221,18 +221,16 @@
         }
 
         .edit-group-btn {
-            margin-left: auto;
-            padding: 6px 10px;
+            width: 100%;
+            padding: 12px;
             border: none;
-            border-radius: 8px;
-            background: linear-gradient(135deg, #22c55e, #4ade80);
-            color: white;
+            border-top: 1px solid #334155;
+            background: transparent;
+            color: #22c55e;
             cursor: pointer;
             font-size: 14px;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            text-align: left;
+            transition: 0.2s;
         }
 
         /* HOVER */
@@ -270,6 +268,7 @@
             border-radius: 15px;
             font-size: 14px;
             animation: fadeIn 0.2s ease;
+            width: fit-content;
         }
 
         @keyframes fadeIn {
@@ -391,9 +390,9 @@
 
             <div class="chat-input">
 
-                <input type="text" placeholder="Escribe un mensaje...">
+                <input type="text" id="messageInput" placeholder="Escribe un mensaje...">
 
-                <button>Enviar</button>
+                <button onclick="sendMessage()">Enviar</button>
 
             </div>
 
@@ -431,8 +430,7 @@
 
                 div.innerHTML = `
                 <div class="avatar"></div>
-                <span>${group.name}</span>
-            `;
+                <span>${group.name}</span>`;
 
                 div.onclick = () => selectGroup(group);
 
@@ -440,10 +438,32 @@
             });
         }
 
+        let socket = null;
+        let currentGroupId = null;
+
         async function selectGroup(group) {
+            currentGroupId = group.id;
+
             document.getElementById("chatTitle").innerText = group.name;
 
             const token = sessionStorage.getItem("token");
+            const userId = sessionStorage.getItem("user_id");
+
+            if (socket) {
+                socket.close();
+            }
+
+            const protocol = location.protocol === "https:" ? "wss" : "ws";
+
+            socket = new WebSocket(`${protocol}://${location.host}/ws/groups/${group.id}?token=${token}`);
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.action === "new_message") {
+                    addMessageToChat(data);
+                }
+            };
 
             const response = await fetch(`/groups/${group.id}/members`, {
                 headers: {
@@ -456,9 +476,19 @@
             const members = data.members;
             const adminId = data.admin_id;
             const currentUserId = data.current_user_id;
+            const userMap = {};
 
+            members.forEach(user => {
+                userMap[user.id] = user.username;
+            });
+
+            const dropdown = document.getElementById("membersDropdown");
             const list = document.getElementById("membersList");
+
             list.innerHTML = "";
+
+            const oldBtn = dropdown.querySelector(".edit-group-btn");
+            if (oldBtn) oldBtn.remove();
 
             members.forEach(user => {
                 const div = document.createElement("div");
@@ -469,7 +499,6 @@
                 }
 
                 div.innerText = label;
-
                 list.appendChild(div);
             });
 
@@ -478,13 +507,38 @@
 
                 addBtn.innerHTML = "Editar grupo";
                 addBtn.classList.add("edit-group-btn");
-
+                
                 addBtn.title = "Editar grupo";
 
                 addBtn.onclick = () => goToEdit(group.id);
 
-                list.appendChild(addBtn);
+                dropdown.appendChild(addBtn);
             }
+
+            const response2 = await fetch(`/ws/groups/${group.id}/messages`, {
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            });
+
+            if (!response2.ok) {
+                alert("Error cargando mensajes");
+                return;
+            }
+
+            const messages = await response2.json();
+
+            const chatBox = document.querySelector(".chat-messages");
+            chatBox.innerHTML = "";
+
+            messages.reverse();
+
+            messages.forEach(msg => {
+                msg.sender_username = userMap[msg.sender_id] || "Usuario";
+                addMessageToChat(msg);
+            });
+
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
 
         loadGroups();
@@ -502,13 +556,59 @@
             menu.classList.toggle("hidden");
         }
 
-        // cerrar si haces click fuera
         window.addEventListener("click", function (e) {
             const menu = document.getElementById("membersDropdown");
             const button = document.querySelector(".chat-menu-btn");
 
             if (!button.contains(e.target) && !menu.contains(e.target)) {
                 menu.classList.add("hidden");
+            }
+        });
+    </script>
+
+    <script>
+        function sendMessage() {
+            const input = document.getElementById("messageInput");
+            const content = input.value.trim();
+
+            if (!content || !socket) return;
+
+            socket.send(JSON.stringify({
+                action: "send_message",
+                content: content
+            }));
+
+            input.value = "";
+        }
+
+        function addMessageToChat(msg) {
+            const chatBox = document.querySelector(".chat-messages");
+            const userId = Number(sessionStorage.getItem("user_id"));
+
+            const div = document.createElement("div");
+
+            const isMine = Number(msg.sender_id) === userId;
+
+            div.classList.add("message");
+            div.classList.add(isMine ? "sent" : "received");
+
+            if (isMine) {
+                div.innerHTML = `
+                ${msg.content || ""}`;
+            } else {
+                div.innerHTML = `
+                <strong>${msg.sender_username}</strong><br>
+                ${msg.content || ""}`;
+            }
+
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        document.getElementById("messageInput").addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                sendMessage();
             }
         });
     </script>

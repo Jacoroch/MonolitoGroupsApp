@@ -174,3 +174,41 @@ async def upload_media(
         "media_url": media_url,
         "filename": unique_filename
     }
+
+@router.post("/groups/{group_id}/messages")
+def send_message_http(
+    group_id: int,
+    message: msg_schemas.MessageCreate,  # schema con content y media_url opcional
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 1. Validar grupo
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Grupo no encontrado")
+
+    # 2. Validar membresía
+    if current_user not in group.members:
+        raise HTTPException(status_code=403, detail="No perteneces a este grupo")
+
+    # 3. Crear mensaje
+    new_message = msg_models.Message(
+        content=message.content,
+        media_url=message.media_url,
+        sender_id=current_user.id,
+        group_id=group_id
+    )
+
+    db.add(new_message)
+    db.commit()
+    db.refresh(new_message)
+
+    # 4. Retornar mensaje listo para frontend
+    return {
+        "id": new_message.id,
+        "content": new_message.content,
+        "media_url": new_message.media_url,
+        "created_at": new_message.created_at,
+        "sender_id": current_user.id,
+        "sender_username": current_user.username
+    }
