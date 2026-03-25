@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 # URL de conexión a tu base de datos local PostgreSQL
 # Formato: postgresql://usuario:contraseña@servidor:puerto/nombre_base_de_datos
 # TODO: Cambia 'postgres' y 'tu_password' por tus credenciales reales
-SQLALCHEMY_DATABASE_URL = "postgresql://admin_groupsapp:root1234@localhost:5432/groupsapp_db"
+SQLALCHEMY_DATABASE_URL = "postgresql://admin_groupsapp:root1234@db:5432/groupsapp_db"
 
 # 1. El Engine es el motor que se comunica directamente con PostgreSQL
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
