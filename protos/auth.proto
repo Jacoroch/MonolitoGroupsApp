@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+// Define el espacio de nombres para evitar colisiones
+package auth;
+
+// El servicio expone las funciones que otros microservicios pueden llamar
+service AuthService {
+    // Valida el token JWT extraído del WebSocket o de las cabeceras HTTP
+    rpc ValidateToken (TokenRequest) returns (TokenResponse);
+    
+    // Obtiene la información pública de un usuario específico
+    rpc GetUser (UserRequest) returns (UserResponse);
+}
+
+// --- Definición de Mensajes (Data Transfer Objects) ---
+
+message TokenRequest {
+    string token = 1;
+}
+
+message TokenResponse {
+    bool is_valid = 1;
+    int32 user_id = 2;
+    string username = 3;
+}
+
+message UserRequest {
+    int32 user_id = 1;
+}
+
+message UserResponse {
+    int32 user_id = 1;
+    string username = 2;
+    string email = 3;
+    bool is_active = 4;
+}

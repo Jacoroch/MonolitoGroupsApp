@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  # K8s tiene su propio DNS interno. En K8s, los servicios se llamarán así:
+  RABBITMQ_HOST: "rabbitmq-service"
+  AUTH_SERVER_URL: "auth-service:50051"
+  GROUPS_SERVER_URL: "groups-service:50052"
+  # Nota: La URL de la BD la armaremos dinámicamente en el Deployment para inyectar los Secrets

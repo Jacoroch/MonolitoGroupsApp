@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-deployment
+spec:
+  replicas: 1 # Si la cola de mensajes crece, ¡aquí podrías poner 5 obreros! # ----------- REPLICAS ----------- REPLICAS ----------- REPLICAS ----------- REPLICAS -----------
+  selector:
+    matchLabels:
+      app: messaging-worker
+  template:
+    metadata:
+      labels:
+        app: messaging-worker
+    spec:
+      containers:
+      - name: messaging-worker
+        image: gruops-app_micro-messaging-worker:latest
+        imagePullPolicy: Never
+        command: ["python3", "modules/consumers/messaging_worker.py"]
+        envFrom:
+        - configMapRef:
+            name: app-config # Toma automáticamente RABBITMQ_HOST
+        env:
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: DB_PASSWORD
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: DB_NAME
+        - name: DATABASE_URL
+          value: "postgresql://$(DB_USER):$(DB_PASSWORD)@postgres-service:5432/$(DB_NAME)"

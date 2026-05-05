@@ -1,31 +1,79 @@
-version: "3.9"
+version: '3.8'
 
 services:
-  db:
-    image: postgres:15
-    container_name: postgres_db
-    restart: always
+  # 1. Base de Datos
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-server
     environment:
-      POSTGRES_USER: admin_groupsapp
-      POSTGRES_PASSWORD: root1234
-      POSTGRES_DB: groupsapp_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  web:
+  # 2. Buzón de Mensajes
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-server
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 3. Servidor de Identidad (Auth)
+  auth-grpc:
     build: .
-    container_name: fastapi_app
+    container_name: auth-grpc-server
+    command: python3 -m modules.auth.grpc_server
+    env_file:    # ✅ AHORA SÍ LEERÁ EL ARCHIVO .env
+      - .env
     depends_on:
-      - db
+      postgres:
+        condition: service_healthy
+
+  # 4. Servidor de Grupos
+  groups-grpc:
+    build: .
+    container_name: groups-grpc-server
+    command: python3 -m modules.groups.grpc_server
+    env_file:    # ✅ AHORA SÍ LEERÁ EL ARCHIVO .env
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 5. El Obrero Asíncrono
+  messaging-worker:
+    build: .
+    container_name: messaging-worker
+    command: python3 modules/consumers/messaging_worker.py
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # 6. La API Principal (FastAPI)
+  api-gateway:
+    build: .
+    container_name: fastapi-gateway
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql://admin_groupsapp:root1234@db:5432/mydatabase
-    volumes:
-      - .:/app  # optional for dev (enables reload-like behavior)
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-
-volumes:
-  postgres_data:
+    env_file:
+      - .env 
+    depends_on:
+      postgres:
+        condition: service_healthy

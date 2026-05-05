@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package groups;
+
+service GroupService {
+    // Verifica la relación Muchos a Muchos entre usuarios y grupos
+    rpc CheckMembership (MembershipRequest) returns (MembershipResponse);
+}
+
+message MembershipRequest {
+    int32 group_id = 1;
+    int32 user_id = 2;
+}
+
+message MembershipResponse {
+    bool is_member = 1;
+    // Opcional: Útil si se requiere validar permisos de administrador en el chat
+    bool is_admin = 2; 
+}

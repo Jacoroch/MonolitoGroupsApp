@@ -1,0 +1,58 @@
+---
+# 1. EL SERVICIO (Red Interna)
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service # Así lo buscará el API Gateway
+spec:
+  selector:
+    app: auth-grpc
+  ports:
+    - protocol: TCP
+      port: 50051
+      targetPort: 50051
+
+---
+# 2. EL DEPLOYMENT (Los Contenedores)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-deployment
+spec:
+  replicas: 1 # ----------- REPLICAS ----------- REPLICAS ----------- REPLICAS ----------- REPLICAS -----------
+  selector:
+    matchLabels:
+      app: auth-grpc
+  template:
+    metadata:
+      labels:
+        app: auth-grpc
+    spec:
+      containers:
+      - name: auth-grpc
+        # OJO: Por ahora ponemos un nombre genérico. 
+        # Cuando vayamos a AWS, aquí irá la URL de Amazon ECR.
+        image: gruops-app_micro-auth-grpc:latest 
+        imagePullPolicy: Never
+        command: ["python3", "-m", "modules.auth.grpc_server"]
+        ports:
+        - containerPort: 50051
+        env:
+        # Aquí le inyectamos los datos del Secret y del ConfigMap
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: DB_PASSWORD
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: DB_NAME
+        - name: DATABASE_URL
+          value: "postgresql://$(DB_USER):$(DB_PASSWORD আসা@postgres-service:5432/$(DB_NAME)"

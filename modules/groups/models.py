@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Table
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
+from modules.auth.models import User
 
 # 1. Tabla intermedia para la relación Muchos-a-Muchos (Usuarios <-> Grupos)
 group_members = Table(
