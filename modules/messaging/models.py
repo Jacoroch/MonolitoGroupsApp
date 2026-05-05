@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
@@ -7,60 +7,53 @@ class Message(Base):
     __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, index=True)
-    
-    # El contenido puede ser nulo si el usuario solo envía una foto sin texto
     content = Column(Text, nullable=True) 
-    
-    # ¡Aquí está la conexión con tu diagrama! Guardaremos la URL de S3
     media_url = Column(String(500), nullable=True) 
-    
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Llaves foráneas para saber quién lo envió y a qué grupo pertenece
-    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False)
+    # ✅ Referencias LÓGICAS (Soft Links)
+    # Reemplazamos los ForeignKey por simples enteros indexados para búsquedas rápidas.
+    sender_id = Column(Integer, index=True, nullable=False)
+    group_id = Column(Integer, index=True, nullable=False)
 
-    # Relaciones lógicas (opcionales, pero muy útiles para FastAPI)
-    sender = relationship("User")
-    group = relationship("Group")
+    # ❌ ELIMINADO: sender = relationship("User")
+    # ❌ ELIMINADO: group = relationship("Group")
+
 
 class MessageRead(Base):
     __tablename__ = "message_reads"
 
     id = Column(Integer, primary_key=True, index=True)
     
-    # ¿A qué mensaje pertenece este "visto"?
+    # ✅ Relación FÍSICA permitida (porque 'messages' vive en esta misma base de datos)
     message_id = Column(Integer, ForeignKey("messages.id"), nullable=False)
     
-    # ¿Quién fue la persona que lo vio?
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # ✅ Referencia LÓGICA al usuario (porque Auth vive en otra BD)
+    user_id = Column(Integer, index=True, nullable=False)
     
-    # ¿A qué hora exacta lo vio? (Para los famosos dos chulitos azules)
     read_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relaciones para facilitar consultas después
+    # ✅ Mantenemos esta relación porque es interna
     message = relationship("Message", backref="read_receipts")
-    user = relationship("User")
+    
+    # ❌ ELIMINADO: user = relationship("User")
+
 
 class MessageReceipt(Base):
     __tablename__ = "message_receipts"
 
     id = Column(Integer, primary_key=True, index=True)
     
-    # ¿De qué mensaje estamos hablando?
+    # ✅ Relación FÍSICA permitida
     message_id = Column(Integer, ForeignKey("messages.id"), nullable=False)
     
-    # ¿A qué usuario (receptor) le pertenece este estado?
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # ✅ Referencia LÓGICA al usuario (receptor)
+    user_id = Column(Integer, index=True, nullable=False)
     
-    # ¿Cuándo le llegó al dispositivo? (Doble chulito gris)
-    # Es nullable=True porque al principio el mensaje aún no ha llegado
     delivered_at = Column(DateTime, nullable=True)
-    
-    # ¿Cuándo abrió el chat y lo leyó? (Doble chulito azul)
-    # También es nullable=True por defecto
     read_at = Column(DateTime, nullable=True)
 
-    # Relaciones
+    # ✅ Mantenemos esta relación porque es interna
     message = relationship("Message", backref="receipts")
-    user = relationship("User")
+    
+    # ❌ ELIMINADO: user = relationship("User")

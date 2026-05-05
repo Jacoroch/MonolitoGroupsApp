@@ -3,8 +3,7 @@
 import grpc
 import warnings
 
-#import auth_pb2 as auth__pb2
-from . import auth_pb2 as auth__pb2
+from protos import auth_pb2 as protos_dot_auth__pb2
 
 GRPC_GENERATED_VERSION = '1.80.0'
 GRPC_VERSION = grpc.__version__
@@ -19,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + ' but the generated code in auth_pb2_grpc.py depends on'
+        + ' but the generated code in protos/auth_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -38,13 +37,13 @@ class AuthServiceStub(object):
         """
         self.ValidateToken = channel.unary_unary(
                 '/auth.AuthService/ValidateToken',
-                request_serializer=auth__pb2.TokenRequest.SerializeToString,
-                response_deserializer=auth__pb2.TokenResponse.FromString,
+                request_serializer=protos_dot_auth__pb2.TokenRequest.SerializeToString,
+                response_deserializer=protos_dot_auth__pb2.TokenResponse.FromString,
                 _registered_method=True)
         self.GetUser = channel.unary_unary(
                 '/auth.AuthService/GetUser',
-                request_serializer=auth__pb2.UserRequest.SerializeToString,
-                response_deserializer=auth__pb2.UserResponse.FromString,
+                request_serializer=protos_dot_auth__pb2.UserRequest.SerializeToString,
+                response_deserializer=protos_dot_auth__pb2.UserResponse.FromString,
                 _registered_method=True)
 
 
@@ -71,13 +70,13 @@ def add_AuthServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'ValidateToken': grpc.unary_unary_rpc_method_handler(
                     servicer.ValidateToken,
-                    request_deserializer=auth__pb2.TokenRequest.FromString,
-                    response_serializer=auth__pb2.TokenResponse.SerializeToString,
+                    request_deserializer=protos_dot_auth__pb2.TokenRequest.FromString,
+                    response_serializer=protos_dot_auth__pb2.TokenResponse.SerializeToString,
             ),
             'GetUser': grpc.unary_unary_rpc_method_handler(
                     servicer.GetUser,
-                    request_deserializer=auth__pb2.UserRequest.FromString,
-                    response_serializer=auth__pb2.UserResponse.SerializeToString,
+                    request_deserializer=protos_dot_auth__pb2.UserRequest.FromString,
+                    response_serializer=protos_dot_auth__pb2.UserResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -106,8 +105,8 @@ class AuthService(object):
             request,
             target,
             '/auth.AuthService/ValidateToken',
-            auth__pb2.TokenRequest.SerializeToString,
-            auth__pb2.TokenResponse.FromString,
+            protos_dot_auth__pb2.TokenRequest.SerializeToString,
+            protos_dot_auth__pb2.TokenResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -133,8 +132,8 @@ class AuthService(object):
             request,
             target,
             '/auth.AuthService/GetUser',
-            auth__pb2.UserRequest.SerializeToString,
-            auth__pb2.UserResponse.FromString,
+            protos_dot_auth__pb2.UserRequest.SerializeToString,
+            protos_dot_auth__pb2.UserResponse.FromString,
             options,
             channel_credentials,
             insecure,

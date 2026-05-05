@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 from datetime import datetime
 from typing import List
 from uuid import uuid4
-from core.database import get_db
+from core.database import get_messaging_db
 from modules.messaging.sockets import ConnectionManager
 from modules.messaging import models as msg_models
 from modules.messaging import schemas as msg_schemas
@@ -30,7 +30,7 @@ async def websocket_endpoint(
     websocket: WebSocket,
     group_id: int,
     token: str = Query(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_messaging_db)
 ):
     # 1. Autorización de Identidad por gRPC
     current_user = validate_token_ws(token)
@@ -121,7 +121,7 @@ async def websocket_endpoint(
 def get_group_message_history(
     group_id: int,
     limit: int = 50,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_messaging_db),
     current_user: dict = Depends(get_current_user_grpc) 
 ):
     # Validamos vía gRPC en lugar de usar db.query(Group)
@@ -169,7 +169,7 @@ async def upload_media(
 def send_message_http(
     group_id: int,
     message: msg_schemas.MessageCreate, 
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_messaging_db),
     current_user: dict = Depends(get_current_user_grpc) 
 ):
     # Validamos vía gRPC en lugar de usar db.query(Group)

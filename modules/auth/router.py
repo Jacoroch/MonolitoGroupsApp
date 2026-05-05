@@ -7,7 +7,7 @@ from jose import jwt
 from jose import JWTError, jwt
 import bcrypt  
 from fastapi import Query, WebSocketException, status
-from core.database import get_db
+from core.database import get_auth_db
 from modules.auth import models, schemas
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
@@ -21,7 +21,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 # Este es nuestro guardia de seguridad
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_auth_db)):
     credentials_exception = HTTPException(
         status_code=401,
         detail="No se pudieron validar las credenciales",
@@ -67,7 +67,7 @@ def create_access_token(data: dict):
 # --- Endpoints ---
 # --- Register ---
 @router.post("/register", response_model=schemas.UserResponse)
-def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def register_user(user: schemas.UserCreate, db: Session = Depends(get_auth_db)):
     
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
@@ -90,7 +90,7 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 # --- Login ---
 @router.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_auth_db)):
     user = db.query(models.User).filter(models.User.username == form_data.username).first()
     
     # Usamos nuestra nueva función para verificar
@@ -104,7 +104,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 # --- Adaptar la Validación JWT para WebSockets
 async def get_current_user_ws(
     token: str = Query(...), 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_auth_db)
 ):
     """Dependencia específica para validar JWT en conexiones WebSocket"""
     try:

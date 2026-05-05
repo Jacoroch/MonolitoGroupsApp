@@ -1,28 +1,30 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional, List
 
+# Schema para los recibos de lectura (viven en la misma BD de mensajería)
 class MessageReceiptResponse(BaseModel):
     user_id: int
-    delivered_at: Optional[datetime]
-    read_at: Optional[datetime]
+    delivered_at: Optional[datetime] = None
+    read_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
+# Schema principal de respuesta
 class MessageResponse(BaseModel):
     id: int
-    content: Optional[str]
-    media_url: Optional[str]
-    sender_id: int
-    group_id: int
+    content: Optional[str] = None
+    media_url: Optional[str] = None
+    sender_id: int # ✅ Solo el ID, la identidad la resuelve el Gateway o el Front
+    group_id: int  # ✅ Solo el ID
     created_at: datetime
-    # Pydantic mapeará automáticamente el backref "receipts" a esta lista
+    
+    # ✅ Relación interna permitida
     receipts: List[MessageReceiptResponse] = [] 
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
+# Schema para recibir datos del frontend
 class MessageCreate(BaseModel):
-    content: str | None = None
-    media_url: str | None = None
+    content: Optional[str] = None
+    media_url: Optional[str] = None

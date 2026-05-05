@@ -3,7 +3,7 @@ from concurrent import futures
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from protos import auth_pb2, auth_pb2_grpc
-from core.database import SessionLocal
+from core.database import SessionLocalAuth
 from modules.auth import models
 from modules.auth.router import SECRET_KEY, ALGORITHM # Importamos las llaves de tu router
 
@@ -13,7 +13,7 @@ class AuthServicer(auth_pb2_grpc.AuthServiceServicer):
     """
     def ValidateToken(self, request, context):
         print(f"\n🛡️ [SERVIDOR gRPC] Petición recibida. Desencriptando token...")
-        db = SessionLocal()
+        db = SessionLocalAuth()
         try:
             payload = jwt.decode(request.token, SECRET_KEY, algorithms=[ALGORITHM])
             user_id = payload.get("sub")
@@ -44,7 +44,7 @@ class AuthServicer(auth_pb2_grpc.AuthServiceServicer):
             db.close()
 
     def GetUser(self, request, context):
-        db = SessionLocal()
+        db = SessionLocalAuth()
         try:
             user = db.query(models.User).filter(models.User.id == request.user_id).first()
             if user is None:

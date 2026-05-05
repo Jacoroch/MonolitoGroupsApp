@@ -1,35 +1,28 @@
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
-from core.database import engine, Base
+# Inicializador de Bases de Datos separadas
+from core.database import init_dbs
 
-# modelos
-from modules.auth import models as auth_models
-from modules.groups import models as groups_models
-from modules.messaging import models as messaging_models
-
-# routers
+# Routers
 from modules.auth.router import router as auth_router
 from modules.groups.router import router as groups_router
 from modules.messaging.router import router as messaging_router
-# --- Importación de manejo de archivos (pdf, imagenes, etc) ---
-from fastapi.staticfiles import StaticFiles 
 
-# Ejecución DDL: Crea las tablas si no existen en PostgreSQL
-Base.metadata.create_all(bind=engine)
+app = FastAPI(title="GroupsApp API Gateway", version="1.0")
 
-app = FastAPI(title="GroupsApp API", version="1.0")
-
-# --- Servir archivos estáticos ---
-# Esto permite que si alguien visita /static/foto.jpg, el servidor le entregue el archivo
-app.mount("/static", StaticFiles(directory="uploads"), name="static")
+# Evento de inicio: Crea las tablas en sus respectivas bases de datos
+@app.on_event("startup")
+def on_startup():
+    print("🚀 Arrancando API Gateway e inicializando bases de datos aisladas...")
+    init_dbs()
 
 # --- Servir archivos estáticos ---
-# Esto permite que si alguien visita /static/foto.jpg, el servidor le entregue el archivo
 app.mount("/static", StaticFiles(directory="uploads"), name="static")
 
-# configurar templates
+# Configurar templates
 templates = Jinja2Templates(directory="templates")
 
 # --- Registro de sub-aplicaciones (Routers) ---
@@ -37,6 +30,8 @@ app.include_router(auth_router)
 app.include_router(groups_router)
 app.include_router(messaging_router)
 
+
+# --- VISTAS DEL FRONTEND (Temporal hasta la migración a React/Next.js) ---
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -58,5 +53,5 @@ def create_group_view(request: Request):
     return templates.TemplateResponse("create_group.html", {"request": request})
 
 @app.get("/edit-group", response_class=HTMLResponse)
-def create_group_view(request: Request):
+def edit_group_view(request: Request):
     return templates.TemplateResponse("edit_group.html", {"request": request})

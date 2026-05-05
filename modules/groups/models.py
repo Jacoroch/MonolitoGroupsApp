@@ -1,16 +1,28 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Table
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
-from modules.auth.models import User
 
-# 1. Tabla intermedia para la relación Muchos-a-Muchos (Usuarios <-> Grupos)
-group_members = Table(
-    "group_members",
-    Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
-    Column("group_id", Integer, ForeignKey("groups.id"), primary_key=True),
-)
+# ❌ ELIMINADO: from modules.auth.models import User
+
+# 1. Tabla de Miembros (Convertida a Clase para facilitar consultas lógicas)
+class GroupMember(Base):
+    __tablename__ = "group_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # ✅ Relación FÍSICA permitida (Apunta al grupo dentro de esta misma BD)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False)
+    
+    # ✅ Referencia LÓGICA (Apunta al ID del usuario en el microservicio Auth)
+    user_id = Column(Integer, index=True, nullable=False)
+    
+    # Un "bonus" útil para saber cuándo alguien se unió al grupo
+    joined_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relación interna (permitida porque Group y GroupMember viven juntos)
+    group = relationship("Group", back_populates="members")
+
 
 # 2. Tabla principal de Grupos
 class Group(Base):
@@ -21,8 +33,8 @@ class Group(Base):
     description = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # El creador/administrador del grupo (Relación 1 a N con users)
-    admin_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # ✅ Referencia LÓGICA al administrador (Ya no es ForeignKey)
+    admin_id = Column(Integer, index=True, nullable=False)
 
-    # Configuración de la relación para acceder fácilmente a los miembros desde el código
-    members = relationship("User", secondary=group_members, backref="groups")
+    # ✅ Relación interna hacia la tabla de miembros (pero NO hacia Users)
+    members = relationship("GroupMember", back_populates="group")

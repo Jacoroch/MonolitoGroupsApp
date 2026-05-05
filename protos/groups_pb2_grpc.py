@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from . import groups_pb2 as groups__pb2
+from protos import groups_pb2 as protos_dot_groups__pb2
 
 GRPC_GENERATED_VERSION = '1.80.0'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + ' but the generated code in groups_pb2_grpc.py depends on'
+        + ' but the generated code in protos/groups_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -36,8 +36,13 @@ class GroupServiceStub(object):
         """
         self.CheckMembership = channel.unary_unary(
                 '/groups.GroupService/CheckMembership',
-                request_serializer=groups__pb2.MembershipRequest.SerializeToString,
-                response_deserializer=groups__pb2.MembershipResponse.FromString,
+                request_serializer=protos_dot_groups__pb2.MembershipRequest.SerializeToString,
+                response_deserializer=protos_dot_groups__pb2.MembershipResponse.FromString,
+                _registered_method=True)
+        self.GetGroupMembers = channel.unary_unary(
+                '/groups.GroupService/GetGroupMembers',
+                request_serializer=protos_dot_groups__pb2.GroupRequest.SerializeToString,
+                response_deserializer=protos_dot_groups__pb2.GroupMembersResponse.FromString,
                 _registered_method=True)
 
 
@@ -51,13 +56,24 @@ class GroupServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetGroupMembers(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_GroupServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'CheckMembership': grpc.unary_unary_rpc_method_handler(
                     servicer.CheckMembership,
-                    request_deserializer=groups__pb2.MembershipRequest.FromString,
-                    response_serializer=groups__pb2.MembershipResponse.SerializeToString,
+                    request_deserializer=protos_dot_groups__pb2.MembershipRequest.FromString,
+                    response_serializer=protos_dot_groups__pb2.MembershipResponse.SerializeToString,
+            ),
+            'GetGroupMembers': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetGroupMembers,
+                    request_deserializer=protos_dot_groups__pb2.GroupRequest.FromString,
+                    response_serializer=protos_dot_groups__pb2.GroupMembersResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -85,8 +101,35 @@ class GroupService(object):
             request,
             target,
             '/groups.GroupService/CheckMembership',
-            groups__pb2.MembershipRequest.SerializeToString,
-            groups__pb2.MembershipResponse.FromString,
+            protos_dot_groups__pb2.MembershipRequest.SerializeToString,
+            protos_dot_groups__pb2.MembershipResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetGroupMembers(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/groups.GroupService/GetGroupMembers',
+            protos_dot_groups__pb2.GroupRequest.SerializeToString,
+            protos_dot_groups__pb2.GroupMembersResponse.FromString,
             options,
             channel_credentials,
             insecure,

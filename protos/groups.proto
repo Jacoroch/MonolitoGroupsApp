@@ -5,6 +5,7 @@ package groups;
 service GroupService {
     // Verifica la relación Muchos a Muchos entre usuarios y grupos
     rpc CheckMembership (MembershipRequest) returns (MembershipResponse);
+    rpc GetGroupMembers (GroupRequest) returns (GroupMembersResponse);
 }
 
 message MembershipRequest {
@@ -16,4 +17,12 @@ message MembershipResponse {
     bool is_member = 1;
     // Opcional: Útil si se requiere validar permisos de administrador en el chat
     bool is_admin = 2; 
+}
+
+message GroupRequest {
+    int32 group_id = 1;
+}
+
+message GroupMembersResponse {
+    repeated int32 user_ids = 1; // "repeated" significa que es una lista/array
 }
