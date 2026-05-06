@@ -7,6 +7,9 @@ from datetime import datetime
 import protos.presence_pb2 as presence_pb2
 import protos.presence_pb2_grpc as presence_pb2_grpc
 
+# ✅ IMPORTACIÓN DE CONSUL
+from core.consul_registry import register_to_consul
+
 # Base de datos en memoria (Diccionario)
 # Estructura: {"1": {"status": "online", "last_updated": "2026-05-06 15:30:00"}}
 presence_db = {}
@@ -51,7 +54,12 @@ def serve():
     # Lo levantaremos en el puerto 50053
     server.add_insecure_port('[::]:50053')
     print("Servicio de Presencia gRPC iniciado en el puerto 50053...")
+    
     server.start()
+    
+    # ✅ REGISTRO EN CONSUL
+    register_to_consul("presence-service", "presence-grpc-server", 50053)
+    
     server.wait_for_termination()
 
 if __name__ == '__main__':

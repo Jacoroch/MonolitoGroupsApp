@@ -14,14 +14,23 @@ from modules.messaging import models as msg_models
 # ✅ IMPORTAMOS LOS CONTRATOS gRPC DE GRUPOS
 from protos import groups_pb2, groups_pb2_grpc
 
+# ✅ IMPORTAMOS CONSUL
+from core.consul_registry import get_service_url
+
+# RabbitMQ es infraestructura (no cambia de IP a cada rato), así que se queda igual
 RABBITMQ_HOST = os.getenv('RABBITMQ_HOST', 'localhost')
-GROUPS_SERVER_URL = os.getenv('GROUPS_SERVER_URL', 'groups-grpc:50052')
+# Mantenemos esto solo como "plan de respaldo"
+FALLBACK_GROUPS_URL = os.getenv('GROUPS_SERVER_URL', 'groups-grpc-server:50052')
 
 def get_group_members(group_id: int):
     """Llama al microservicio de Grupos por gRPC para obtener los IDs de los miembros"""
-    print(f"📞 [WORKER] Consultando miembros del grupo {group_id} vía gRPC...")
+    
+    # ✅ LE PREGUNTAMOS A CONSUL DÓNDE ESTÁ GRUPOS
+    groups_url = get_service_url("groups-service", FALLBACK_GROUPS_URL)
+    print(f"📞 [WORKER] Consultando miembros del grupo {group_id} vía gRPC en {groups_url}...")
+    
     try:
-        with grpc.insecure_channel(GROUPS_SERVER_URL) as channel:
+        with grpc.insecure_channel(groups_url) as channel:
             stub = groups_pb2_grpc.GroupServiceStub(channel)
             request = groups_pb2.GroupRequest(group_id=group_id)
             response = stub.GetGroupMembers(request)

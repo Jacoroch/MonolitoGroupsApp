@@ -7,6 +7,9 @@ from protos import groups_pb2, groups_pb2_grpc
 from core.database import SessionLocalGroups
 from modules.groups import models
 
+# ✅ IMPORTACIÓN DE CONSUL
+from core.consul_registry import register_to_consul
+
 class GroupServicer(groups_pb2_grpc.GroupServiceServicer):
     def CheckMembership(self, request, context):
         print(f"\n📁 [SERVIDOR GRUPOS] Verificando usuario {request.user_id} en grupo {request.group_id}...")
@@ -48,7 +51,12 @@ def serve():
     groups_pb2_grpc.add_GroupServiceServicer_to_server(GroupServicer(), server)
     server.add_insecure_port('[::]:50052')
     print("📁 Servidor gRPC de Directorio de Grupos corriendo en el puerto 50052...")
+    
     server.start()
+    
+    # ✅ REGISTRO EN CONSUL
+    register_to_consul("groups-service", "groups-grpc-server", 50052)
+    
     server.wait_for_termination()
 
 if __name__ == '__main__':

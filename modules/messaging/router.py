@@ -1,6 +1,6 @@
 import os
 import shutil
-import grpc # <--- NUEVO: Importamos grpc
+import grpc 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, status, HTTPException, File, UploadFile, Query
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session, selectinload
@@ -12,6 +12,7 @@ from modules.messaging.sockets import ConnectionManager
 from modules.messaging import models as msg_models
 from modules.messaging import schemas as msg_schemas
 from modules.messaging.rabbitmq_client import publish_new_message_event
+from core.consul_registry import get_service_url
 
 # Importamos las herramientas gRPC
 from modules.messaging.grpc_client import validate_token_ws, validate_token_http, check_membership_grpc
@@ -30,13 +31,13 @@ def get_current_user_grpc(token: str = Depends(oauth2_scheme)):
 router = APIRouter(prefix="/ws", tags=["Mensajería en Tiempo Real"])
 manager = ConnectionManager()
 
-# <--- NUEVO: Helper para notificar presencia sin bloquear el chat
+# Helper para notificar presencia sin bloquear el chat
 def notify_presence(user_id: int, status: str):
     try:
-        presence_url = os.getenv("PRESENCE_SERVER_URL", "presence-grpc-server:50053")
+        # Le preguntamos a Consul dónde está Presence
+        presence_url = get_service_url("presence-service", "presence-grpc-server:50053")
         with grpc.insecure_channel(presence_url) as channel:
             stub = presence_pb2_grpc.PresenceServiceStub(channel)
-            # Convertimos el user_id a string porque así lo definimos en el .proto
             stub.UpdateStatus(presence_pb2.StatusUpdateRequest(
                 user_id=str(user_id),
                 status=status
@@ -223,7 +224,8 @@ def send_message_http(
 def get_user_presence(user_id: int, current_user: dict = Depends(get_current_user_grpc)):
     """Endpoint para que el frontend consulte si un usuario está online"""
     try:
-        presence_url = os.getenv("PRESENCE_SERVER_URL", "presence-grpc-server:50053")
+        # ✅ NUEVO: Le preguntamos a Consul dónde está Presence
+        presence_url = get_service_url("presence-service", "presence-grpc-server:50053")
         with grpc.insecure_channel(presence_url) as channel:
             stub = presence_pb2_grpc.PresenceServiceStub(channel)
             response = stub.GetUserStatus(presence_pb2.GetStatusRequest(user_id=str(user_id)))
@@ -234,6 +236,5 @@ def get_user_presence(user_id: int, current_user: dict = Depends(get_current_use
                 "last_updated": response.last_updated
             }
     except Exception as e:
-        # Si el servicio de presencia falla, por defecto decimos que está offline
         return {"user_id": str(user_id), "status": "offline", "last_updated": "N/A"}
 

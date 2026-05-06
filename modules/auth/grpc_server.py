@@ -7,6 +7,9 @@ from core.database import SessionLocalAuth
 from modules.auth import models
 from modules.auth.router import SECRET_KEY, ALGORITHM # Importamos las llaves de tu router
 
+# ✅ IMPORTACIÓN DE CONSUL
+from core.consul_registry import register_to_consul
+
 class AuthServicer(auth_pb2_grpc.AuthServiceServicer):
     """
     Esta clase implementa las funciones que definimos en auth.proto
@@ -74,6 +77,10 @@ def serve():
     print("🚀 Servidor gRPC de Identidad corriendo en el puerto 50051...")
     
     server.start()
+    
+    # ✅ REGISTRO EN CONSUL
+    register_to_consul("auth-service", "auth-grpc-server", 50051)
+    
     server.wait_for_termination()
 
 if __name__ == '__main__':

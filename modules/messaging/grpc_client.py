@@ -6,15 +6,22 @@ import os
 from protos import auth_pb2, auth_pb2_grpc
 from protos import groups_pb2, groups_pb2_grpc
 
-# --- URLs DE TUS SERVIDORES ---
-AUTH_SERVER_URL = os.getenv('AUTH_SERVER_URL', 'localhost:50051')
-GROUPS_SERVER_URL = os.getenv('GROUPS_SERVER_URL', 'localhost:50052')
+# ✅ IMPORTAMOS LA FUNCIÓN DE CONSUL
+from core.consul_registry import get_service_url
+
+# Mantenemos esto solo como "plan de respaldo" por si Consul se cae
+FALLBACK_AUTH_URL = os.getenv('AUTH_SERVER_URL', 'auth-grpc-server:50051')
+FALLBACK_GROUPS_URL = os.getenv('GROUPS_SERVER_URL', 'groups-grpc-server:50052')
 
 def validate_token_ws(token: str):
     """Llama al microservicio de Auth por gRPC para validar un WebSocket"""
-    print(f"\n📞 [CLIENTE gRPC] Iniciando llamada a {AUTH_SERVER_URL}...")
+    
+    # ✅ LE PREGUNTAMOS A CONSUL DÓNDE ESTÁ AUTH
+    auth_url = get_service_url("auth-service", FALLBACK_AUTH_URL)
+    print(f"\n📞 [CLIENTE gRPC] Iniciando llamada a {auth_url}...")
+    
     try:
-        with grpc.insecure_channel(AUTH_SERVER_URL) as channel:
+        with grpc.insecure_channel(auth_url) as channel:
             stub = auth_pb2_grpc.AuthServiceStub(channel)
             request = auth_pb2.TokenRequest(token=token)
             
@@ -36,8 +43,12 @@ def validate_token_ws(token: str):
 
 def validate_token_http(token: str):
     """Llama al microservicio de Auth por gRPC para rutas HTTP (ej. historial)"""
+    
+    # ✅ LE PREGUNTAMOS A CONSUL DÓNDE ESTÁ AUTH
+    auth_url = get_service_url("auth-service", FALLBACK_AUTH_URL)
+    
     try:
-        with grpc.insecure_channel(AUTH_SERVER_URL) as channel:
+        with grpc.insecure_channel(auth_url) as channel:
             stub = auth_pb2_grpc.AuthServiceStub(channel)
             request = auth_pb2.TokenRequest(token=token)
             
@@ -55,9 +66,13 @@ def validate_token_http(token: str):
 
 def check_membership_grpc(group_id: int, user_id: int) -> bool:
     """Pregunta al microservicio de Grupos si un usuario pertenece a un grupo"""
-    print(f"📞 [CLIENTE gRPC] Preguntando a Grupos (Puerto 50052) si {user_id} está en {group_id}...")
+    
+    # ✅ LE PREGUNTAMOS A CONSUL DÓNDE ESTÁ GROUPS
+    groups_url = get_service_url("groups-service", FALLBACK_GROUPS_URL)
+    print(f"📞 [CLIENTE gRPC] Preguntando a Grupos en {groups_url} si {user_id} está en {group_id}...")
+    
     try:
-        with grpc.insecure_channel(GROUPS_SERVER_URL) as channel:
+        with grpc.insecure_channel(groups_url) as channel:
             stub = groups_pb2_grpc.GroupServiceStub(channel)
             request = groups_pb2.MembershipRequest(group_id=group_id, user_id=user_id)
             

@@ -1,4 +1,3 @@
-
 services:
   # 1. Base de Datos (Configurada para Multi-DB)
   postgres:
@@ -41,9 +40,13 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/auth_db
+      - CONSUL_HOST=consul-server  # <--- Agregado
+      - CONSUL_PORT=8500           # <--- Agregado
     depends_on:
       postgres:
         condition: service_healthy
+      consul:                      # <--- Agregado
+        condition: service_started
 
   # 4. Grupos (Usa groups_db)
   groups-grpc:
@@ -54,9 +57,13 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/groups_db
+      - CONSUL_HOST=consul-server  # <--- Agregado
+      - CONSUL_PORT=8500           # <--- Agregado
     depends_on:
       postgres:
         condition: service_healthy
+      consul:                      # <--- Agregado
+        condition: service_started
 
   # 5. Worker (Usa messages_db)
   messaging-worker:
@@ -67,7 +74,7 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/messages_db
-      - GROUPS_SERVER_URL=groups-grpc-server:50052  # <--- NUEVO: Para que el worker encuentre a Grupos
+      - GROUPS_SERVER_URL=groups-grpc-server:50052  
       - RABBITMQ_HOST=rabbitmq-server
     depends_on:
       postgres:
@@ -86,35 +93,49 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/auth_db
-      - AUTH_SERVER_URL=auth-grpc-server:50051      # <--- NUEVO: Para validar tokens HTTP y WebSockets
-      - GROUPS_SERVER_URL=groups-grpc-server:50052  # <--- NUEVO: Para validar membresías
-      - PRESENCE_SERVER_URL=presence-grpc-server:50053 # validar presencia
+      - AUTH_SERVER_URL=auth-grpc-server:50051      
+      - GROUPS_SERVER_URL=groups-grpc-server:50052  
+      - PRESENCE_SERVER_URL=presence-grpc-server:50053 
       - RABBITMQ_HOST=rabbitmq-server
+      - CONSUL_HOST=consul-server  # <--- Agregado
+      - CONSUL_PORT=8500           # <--- Agregado
     depends_on:
       postgres:
         condition: service_healthy
+      consul:                      # <--- Agregado
+        condition: service_started
 
-# 7. Servicio de Presencia 
+  # 7. Servicio de Presencia 
   presence-grpc:
     build: .
     container_name: presence-grpc-server
     command: python3 -m modules.presence.grpc_server
     env_file:
       - .env
-    # No necesita depender de postgres porque usa memoria
+    environment:
+      - CONSUL_HOST=consul-server  # <--- Agregado
+      - CONSUL_PORT=8500           # <--- Agregado
+    depends_on:                    # <--- Agregado
+      consul:
+        condition: service_started
 
-# 7. Frontend (Next.js)
+  # 8. Frontend (Next.js)
   frontend:
     build: 
-      context: ./frontend # Ajusta si tu carpeta se llama distinto
+      context: ./frontend 
     container_name: nextjs-frontend
     ports:
       - "3000:3000"
     environment:
-      # URL que usará el navegador del usuario para llegar al backend
-      #- NEXT_PUBLIC_API_URL=http://0.0.0.0:8000
-      #- NEXT_PUBLIC_WS_URL=ws://0.0.0.0:8000
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_WS_URL=ws://localhost:8000
     depends_on:
       - api-gateway
+
+  # 9. Servicio de Coordinación (Service Discovery)
+  consul:
+    image: consul:1.15
+    container_name: consul-server
+    ports:
+      - "8500:8500"
+    command: "agent -dev -client=0.0.0.0"
