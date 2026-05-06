@@ -88,10 +88,20 @@ services:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/auth_db
       - AUTH_SERVER_URL=auth-grpc-server:50051      # <--- NUEVO: Para validar tokens HTTP y WebSockets
       - GROUPS_SERVER_URL=groups-grpc-server:50052  # <--- NUEVO: Para validar membresías
+      - PRESENCE_SERVER_URL=presence-grpc-server:50053 # validar presencia
       - RABBITMQ_HOST=rabbitmq-server
     depends_on:
       postgres:
         condition: service_healthy
+
+# 7. Servicio de Presencia 
+  presence-grpc:
+    build: .
+    container_name: presence-grpc-server
+    command: python3 -m modules.presence.grpc_server
+    env_file:
+      - .env
+    # No necesita depender de postgres porque usa memoria
 
 # 7. Frontend (Next.js)
   frontend:
@@ -102,7 +112,9 @@ services:
       - "3000:3000"
     environment:
       # URL que usará el navegador del usuario para llegar al backend
-      - NEXT_PUBLIC_API_URL=http://0.0.0.0:8000
-      - NEXT_PUBLIC_WS_URL=ws://0.0.0.0:8000
+      #- NEXT_PUBLIC_API_URL=http://0.0.0.0:8000
+      #- NEXT_PUBLIC_WS_URL=ws://0.0.0.0:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8000
     depends_on:
       - api-gateway

@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package presence;
+
+// El servicio de presencia
+service PresenceService {
+  // Para que el Gateway avise cuando alguien se conecta/desconecta
+  rpc UpdateStatus (StatusUpdateRequest) returns (StatusResponse);
+  
+  // Para consultar si alguien está online
+  rpc GetUserStatus (GetStatusRequest) returns (StatusResponse);
+}
+
+message StatusUpdateRequest {
+  string user_id = 1;
+  string status = 2; // "online" o "offline"
+}
+
+message GetStatusRequest {
+  string user_id = 1;
+}
+
+message StatusResponse {
+  string user_id = 1;
+  string status = 2;
+  string last_updated = 3; // Fecha y hora del último cambio
+}

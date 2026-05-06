@@ -1,5 +1,6 @@
 import os
 import shutil
+import grpc # <--- NUEVO: Importamos grpc
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, status, HTTPException, File, UploadFile, Query
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session, selectinload
@@ -12,8 +13,12 @@ from modules.messaging import models as msg_models
 from modules.messaging import schemas as msg_schemas
 from modules.messaging.rabbitmq_client import publish_new_message_event
 
-# Importamos las herramientas gRPC (¡Cero dependencias de otros módulos locales!)
+# Importamos las herramientas gRPC
 from modules.messaging.grpc_client import validate_token_ws, validate_token_http, check_membership_grpc
+
+# <--- NUEVO: Importamos los protos de Presencia
+import protos.presence_pb2 as presence_pb2
+import protos.presence_pb2_grpc as presence_pb2_grpc
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -25,6 +30,21 @@ def get_current_user_grpc(token: str = Depends(oauth2_scheme)):
 router = APIRouter(prefix="/ws", tags=["Mensajería en Tiempo Real"])
 manager = ConnectionManager()
 
+# <--- NUEVO: Helper para notificar presencia sin bloquear el chat
+def notify_presence(user_id: int, status: str):
+    try:
+        presence_url = os.getenv("PRESENCE_SERVER_URL", "presence-grpc-server:50053")
+        with grpc.insecure_channel(presence_url) as channel:
+            stub = presence_pb2_grpc.PresenceServiceStub(channel)
+            # Convertimos el user_id a string porque así lo definimos en el .proto
+            stub.UpdateStatus(presence_pb2.StatusUpdateRequest(
+                user_id=str(user_id),
+                status=status
+            ))
+    except Exception as e:
+        print(f"[WARNING] No se pudo actualizar presencia para el usuario {user_id}: {e}")
+
+
 @router.websocket("/groups/{group_id}")
 async def websocket_endpoint(
     websocket: WebSocket,
@@ -35,7 +55,7 @@ async def websocket_endpoint(
     # 1. Autorización de Identidad por gRPC
     current_user = validate_token_ws(token)
 
-    # 2. Autorización de Grupos por gRPC (Reemplaza la consulta a la BD)
+    # 2. Autorización de Grupos por gRPC
     is_member = check_membership_grpc(group_id=group_id, user_id=current_user["id"])
 
     if not is_member:
@@ -43,6 +63,9 @@ async def websocket_endpoint(
         return
 
     await manager.connect(websocket, group_id)
+    
+    # <--- NUEVO: Avisamos al servicio de presencia que el usuario entró al chat
+    notify_presence(current_user["id"], "online")
 
     try:
         while True:
@@ -67,16 +90,12 @@ async def websocket_endpoint(
                 db.commit() 
                 db.refresh(new_message)
                 
-                # --- ¡NUEVO: LANZAMOS EL EVENTO A RABBITMQ! ---
+                # Lanzamos el evento a RabbitMQ
                 publish_new_message_event(
                     group_id=group_id, 
                     message_id=new_message.id, 
                     sender_id=current_user["id"]
                 )
-                # ----------------------------------------------
-
-                # NOTA DE MICROSERVICIOS: 
-                # Eliminamos el loop de "group.members" porque ya no tenemos acceso a esa tabla.
 
                 message_payload = {
                     "action": "new_message",
@@ -115,6 +134,8 @@ async def websocket_endpoint(
 
     except WebSocketDisconnect:
         manager.disconnect(websocket, group_id)
+        # <--- NUEVO: Avisamos al servicio de presencia que el usuario salió
+        notify_presence(current_user["id"], "offline")
 
 
 @router.get("/groups/{group_id}/messages", response_model=List[msg_schemas.MessageResponse])
@@ -128,7 +149,6 @@ def get_group_message_history(
     is_member = check_membership_grpc(group_id=group_id, user_id=current_user["id"])
     
     if not is_member:
-        # Si no es miembro (o el grupo no existe), devolvemos 403
         raise HTTPException(status_code=403, detail="No tienes acceso al historial de este grupo")
 
     messages = (
@@ -172,7 +192,7 @@ def send_message_http(
     db: Session = Depends(get_messaging_db),
     current_user: dict = Depends(get_current_user_grpc) 
 ):
-    # Validamos vía gRPC en lugar de usar db.query(Group)
+    # Validamos vía gRPC
     is_member = check_membership_grpc(group_id=group_id, user_id=current_user["id"])
     
     if not is_member:
@@ -197,3 +217,23 @@ def send_message_http(
         "sender_id": current_user["id"], 
         "sender_username": current_user["username"] 
     }
+    
+    # --- Consulta de Presencia ---
+@router.get("/users/{user_id}/status")
+def get_user_presence(user_id: int, current_user: dict = Depends(get_current_user_grpc)):
+    """Endpoint para que el frontend consulte si un usuario está online"""
+    try:
+        presence_url = os.getenv("PRESENCE_SERVER_URL", "presence-grpc-server:50053")
+        with grpc.insecure_channel(presence_url) as channel:
+            stub = presence_pb2_grpc.PresenceServiceStub(channel)
+            response = stub.GetUserStatus(presence_pb2.GetStatusRequest(user_id=str(user_id)))
+            
+            return {
+                "user_id": response.user_id,
+                "status": response.status,
+                "last_updated": response.last_updated
+            }
+    except Exception as e:
+        # Si el servicio de presencia falla, por defecto decimos que está offline
+        return {"user_id": str(user_id), "status": "offline", "last_updated": "N/A"}
+

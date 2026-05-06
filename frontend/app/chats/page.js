@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { getMyGroups, getMe, getGroupMembers, getMessages } from "@/lib/api";
+import { getMyGroups, getMe, getGroupMembers, getMessages, getUserStatus } from "@/lib/api";
 
 export default function ChatsPage() {
   const router = useRouter();
@@ -85,7 +85,26 @@ export default function ChatsPage() {
       const newMap = {};
       usersData.forEach(u => { newMap[u.id] = u.username; });
       setUserMap(newMap);
-      setMembers(dataMembers.members.map(m => ({ ...m, username: newMap[m.id] || `ID: ${m.id}` })));
+      
+      // ✅ NUEVO: Consultamos el estado de presencia de cada miembro
+      const membersWithStatus = await Promise.all(
+        dataMembers.members.map(async (m) => {
+          let status = "offline";
+          try {
+            const statusData = await getUserStatus(m.id, token);
+            status = statusData.status;
+          } catch (error) {
+            console.error("No se pudo obtener el estado", error);
+          }
+          return { 
+            ...m, 
+            username: newMap[m.id] || `ID: ${m.id}`,
+            status: status 
+          };
+        })
+      );
+      
+      setMembers(membersWithStatus);
 
       // 2. CARGAR HISTORIAL 
       // ✅ CORREGIDO: Usamos API_URL
@@ -189,6 +208,11 @@ export default function ChatsPage() {
                   <div className="members-list">
                     {members.map((m) => (
                       <div key={m.id} className="member-item">
+                        {/* ✅ NUEVO: Indicador visual de presencia */}
+                        <span title={m.status === "online" ? "En línea" : "Desconectado"}>
+                          {m.status === "online" ? "🟢" : "⚪"}
+                        </span>
+                        {" "}
                         {m.username} {m.is_admin ? "(admin)" : ""}
                       </div>
                     ))}

@@ -117,3 +117,13 @@ export async function getMessages(groupId, token) {
   });
   return handleResponse(res, "Error cargando el historial de mensajes");
 }
+
+// Consulta el estado de conexión de un usuario (Online/Offline)
+export async function getUserStatus(userId, token) {
+  const res = await fetch(`${API_URL}/ws/users/${userId}/status`, {
+    headers: { 
+      "Authorization": `Bearer ${token}` 
+    }
+  });
+  return handleResponse(res, "Error al obtener estado del usuario");
+}
