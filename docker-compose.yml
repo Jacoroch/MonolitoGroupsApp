@@ -93,3 +93,16 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+# 7. Frontend (Next.js)
+  frontend:
+    build: 
+      context: ./frontend # Ajusta si tu carpeta se llama distinto
+    container_name: nextjs-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      # URL que usará el navegador del usuario para llegar al backend
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api-gateway
