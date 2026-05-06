@@ -15,6 +15,9 @@ function EditGroupContent() {
   const [usernameInput, setUsernameInput] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // ✅ CORREGIDO: Declaramos la variable de entorno al inicio del componente
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://0.0.0.0:8000";
+
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const loadMembers = async () => {
@@ -23,7 +26,8 @@ function EditGroupContent() {
 
     try {
       // 1. Obtenemos los miembros (que vienen con ID e is_admin)
-      const resMembers = await fetch(`http://127.0.0.1:8000/groups/${groupId}/members`, {
+      // ✅ CORREGIDO
+      const resMembers = await fetch(`${API_URL}/groups/${groupId}/members`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await resMembers.json();
@@ -33,8 +37,8 @@ function EditGroupContent() {
       const memberIds = membersList.map(m => m.id);
 
       // 3. Pedimos los nombres al endpoint de búsqueda masiva
-      // (Asumiendo que tienes el endpoint /auth/users/by-ids que mencionamos antes)
-      const resNames = await fetch(`http://127.0.0.1:8000/auth/users/by-ids`, {
+      // ✅ CORREGIDO
+      const resNames = await fetch(`${API_URL}/auth/users/by-ids`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -85,7 +89,8 @@ function EditGroupContent() {
     if (!result.isConfirmed) return;
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/groups/${groupId}/members/${userId}`, {
+      // ✅ CORREGIDO
+      const res = await fetch(`${API_URL}/groups/${groupId}/members/${userId}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -105,8 +110,8 @@ function EditGroupContent() {
 
     try {
       // 1. BUSCAR EL USUARIO
-      // El endpoint devuelve una lista: [{"id":2,"username":"a"}]
-      const searchRes = await fetch(`http://127.0.0.1:8000/auth/users/search?username=${usernameInput}`, {
+      // ✅ CORREGIDO
+      const searchRes = await fetch(`${API_URL}/auth/users/search?username=${usernameInput}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
 
@@ -130,13 +135,14 @@ function EditGroupContent() {
       const userId = searchData[0].id;
 
       // 2. ENVIAR EL ID AL GRUPO
-      const response = await fetch(`http://127.0.0.1:8000/groups/${groupId}/members`, {
+      // ✅ CORREGIDO
+      const response = await fetch(`${API_URL}/groups/${groupId}/members`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ user_id: userId }) // Aquí enviamos el ID obtenido
+        body: JSON.stringify({ user_id: userId }) 
       });
 
       if (response.ok) {

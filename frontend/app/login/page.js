@@ -29,7 +29,9 @@ export default function LoginPage() {
       formData.append("password", form.password);
       formData.append("grant_type", "password");
 
-      const res = await fetch("http://127.0.0.1:8000/auth/login", {
+      // ✅ CORREGIDO: Leemos la variable de entorno o usamos localhost por defecto
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"

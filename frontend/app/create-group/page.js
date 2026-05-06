@@ -8,6 +8,8 @@ import { createGroup, addUserToGroup } from "@/lib/api";
 export default function CreateGroupPage() {
   const router = useRouter();
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://0.0.0.0:8000";
+
   const [token, setToken] = useState(null);
   const [groupData, setGroupData] = useState({ name: "", description: "" });
   const [currentGroupId, setCurrentGroupId] = useState(null);
@@ -49,8 +51,7 @@ export default function CreateGroupPage() {
   const handleSearchUser = async () => {
     if (!searchUsername.trim()) return;
     try {
-      // Usamos el endpoint de búsqueda que devuelve un array: [{"id":2,"username":"a"}]
-      const response = await fetch(`http://127.0.0.1:8000/auth/users/search?username=${searchUsername}`, {
+      const response = await fetch(`${API_URL}/auth/users/search?username=${searchUsername}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       

@@ -25,6 +25,10 @@ export default function ChatsPage() {
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
+  // ✅ CORREGIDO: Leemos las variables de entorno para HTTP y WebSockets
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://0.0.0.0:8000";
+  const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://0.0.0.0:8000";
+
   // 1. Cargar usuario y grupos al entrar
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -66,7 +70,9 @@ export default function ChatsPage() {
       setAdminId(dataMembers.admin_id);
 
       const memberIds = dataMembers.members.map(m => m.id);
-      const resUsers = await fetch("http://127.0.0.1:8000/auth/users/by-ids", {
+      
+      // ✅ CORREGIDO: Usamos API_URL
+      const resUsers = await fetch(`${API_URL}/auth/users/by-ids`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -81,8 +87,9 @@ export default function ChatsPage() {
       setUserMap(newMap);
       setMembers(dataMembers.members.map(m => ({ ...m, username: newMap[m.id] || `ID: ${m.id}` })));
 
-      // 2. CARGAR HISTORIAL (Tu nuevo endpoint)
-      const resMsgs = await fetch(`http://127.0.0.1:8000/ws/groups/${group.id}/messages?limit=50`, {
+      // 2. CARGAR HISTORIAL 
+      // ✅ CORREGIDO: Usamos API_URL
+      const resMsgs = await fetch(`${API_URL}/ws/groups/${group.id}/messages?limit=50`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const history = await resMsgs.json();
@@ -93,7 +100,8 @@ export default function ChatsPage() {
       // 3. RECONECTAR WEBSOCKET
       if (socketRef.current) socketRef.current.close();
 
-      const wsUrl = `ws://127.0.0.1:8000/ws/groups/${group.id}?token=${token}`;
+      // ✅ CORREGIDO: Usamos WS_URL
+      const wsUrl = `${WS_URL}/ws/groups/${group.id}?token=${token}`;
       socketRef.current = new WebSocket(wsUrl);
 
       socketRef.current.onmessage = (event) => {
