@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt
 from jose import JWTError, jwt
 import bcrypt  
 from fastapi import Query, WebSocketException, status
@@ -127,3 +126,37 @@ def get_me(current_user: models.User = Depends(get_current_user)):
         "id": current_user.id,
         "username": current_user.username
     }
+
+@router.get("/users/search")
+def search_user(
+    username: str,
+    db: Session = Depends(get_auth_db)
+):
+    users = db.query(models.User).filter(
+        models.User.username.ilike(f"%{username}%")
+    ).limit(10).all()
+
+    return [
+        {
+            "id": u.id,
+            "username": u.username
+        }
+        for u in users
+    ]
+    
+@router.post("/users/by-ids")
+def get_users_by_ids(
+    ids: list[int],
+    db: Session = Depends(get_auth_db)
+):
+    users = db.query(models.User).filter(
+        models.User.id.in_(ids)
+    ).all()
+
+    return [
+        {
+            "id": u.id,
+            "username": u.username
+        }
+        for u in users
+    ]

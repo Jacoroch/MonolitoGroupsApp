@@ -1,57 +1,52 @@
-from fastapi import FastAPI, Request
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
-# Inicializador de Bases de Datos separadas
 from core.database import init_dbs
 
-# Routers
 from modules.auth.router import router as auth_router
 from modules.groups.router import router as groups_router
 from modules.messaging.router import router as messaging_router
 
-app = FastAPI(title="GroupsApp API Gateway", version="1.0")
+app = FastAPI(
+    title="GroupsApp API Gateway",
+    version="1.0"
+)
 
-# Evento de inicio: Crea las tablas en sus respectivas bases de datos
+# 🚀 Inicializar bases
 @app.on_event("startup")
 def on_startup():
-    print("🚀 Arrancando API Gateway e inicializando bases de datos aisladas...")
+    print("🚀 Inicializando bases de datos...")
     init_dbs()
 
-# --- Servir archivos estáticos ---
+# 🌐 CORS (Configuración robusta para desarrollo)
+# Añadimos 127.0.0.1 para evitar bloqueos si Next.js usa la IP en lugar del nombre
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 📁 Archivos estáticos (Asegúrate de que la carpeta 'uploads' exista)
+# Nota: Si no existe la carpeta, la app dará error al iniciar.
+import os
+if not os.path.exists("uploads"):
+    os.makedirs("uploads")
+
 app.mount("/static", StaticFiles(directory="uploads"), name="static")
 
-# Configurar templates
-templates = Jinja2Templates(directory="templates")
-
-# --- Registro de sub-aplicaciones (Routers) ---
+# 🔌 Routers
 app.include_router(auth_router)
 app.include_router(groups_router)
 app.include_router(messaging_router)
 
-
-# --- VISTAS DEL FRONTEND (Temporal hasta la migración a React/Next.js) ---
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-@app.get("/login", response_class=HTMLResponse)
-def login_view(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
-
-@app.get("/signup", response_class=HTMLResponse)
-def signup_view(request: Request):
-    return templates.TemplateResponse("signup.html", {"request": request})
-
-@app.get("/chats", response_class=HTMLResponse)
-def chats_view(request: Request):
-    return templates.TemplateResponse("chats.html", {"request": request})
-
-@app.get("/create-group", response_class=HTMLResponse)
-def create_group_view(request: Request):
-    return templates.TemplateResponse("create_group.html", {"request": request})
-
-@app.get("/edit-group", response_class=HTMLResponse)
-def edit_group_view(request: Request):
-    return templates.TemplateResponse("edit_group.html", {"request": request})
+@app.get("/")
+def read_root():
+    return {"message": "GroupsApp API is running 🚀"}
