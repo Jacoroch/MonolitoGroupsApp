@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: presence-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: presence
+  template:
+    metadata:
+      labels:
+        app: presence
+    spec:
+      containers:
+      - name: presence
+        image: groupsapp-backend:latest
+        imagePullPolicy: Never
+        command: ["python3", "-m", "modules.presence.grpc_server"]
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: presence-service
+spec:
+  selector:
+    app: presence
+  ports:
+    - protocol: TCP
+      port: 50053
+      targetPort: 50053

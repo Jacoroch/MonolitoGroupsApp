@@ -12,9 +12,14 @@ spec:
       labels:
         app: messaging-worker
     spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:1.28
+        command: ['sh', '-c', "until nc -zv postgres-service 5432; do echo waiting for postgres; sleep 2; done;"]
       containers:
       - name: messaging-worker
-        image: gruops-app_micro-messaging-worker:latest
+        #image: gruops-app_micro-messaging-worker:latest
+        image: groupsapp-backend:latest
         imagePullPolicy: Never
         command: ["python3", "modules/consumers/messaging_worker.py"]
         envFrom:
@@ -37,4 +42,4 @@ spec:
               name: app-secrets
               key: DB_NAME
         - name: DATABASE_URL
-          value: "postgresql://$(DB_USER):$(DB_PASSWORD)@postgres-service:5432/$(DB_NAME)"
+          value: "postgresql://$(DB_USER):$(DB_PASSWORD)@postgres-service:5432/messages_db"

@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: api-gateway-service
 spec:
-  type: LoadBalancer # En AWS, esto creará un balanceador de carga público con una URL real
+  type: LoadBalancer 
   selector:
     app: api-gateway
   ports:
@@ -18,7 +18,7 @@ kind: Deployment
 metadata:
   name: api-gateway-deployment
 spec:
-  replicas: 2 # El API suele recibir más tráfico, así que le damos 2 réplicas desde el inicio # ----------- REPLICAS ----------- REPLICAS ----------- REPLICAS ----------- REPLICAS -----------
+  replicas: 2 
   selector:
     matchLabels:
       app: api-gateway
@@ -27,31 +27,46 @@ spec:
       labels:
         app: api-gateway
     spec:
+      # 🛡️ Paso 1: Esperar físicamente a que el puerto de Postgres abra
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:1.28
+        command: ['sh', '-c', "until nc -zv postgres-service 5432; do echo waiting for postgres; sleep 2; done;"]
+      
       containers:
       - name: api-gateway
-        image: gruops-app_micro-api-gateway:latest
+        image: groupsapp-backend:latest
         imagePullPolicy: Never
         command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
         ports:
         - containerPort: 8000
+        
+        # 🏥 Paso 2: Verificar que la app esté lista para recibir tráfico
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 20
+
         envFrom:
         - configMapRef:
-            name: app-config # Toma las URLs de los servidores gRPC y RabbitMQ
+            name: app-config 
         env:
         - name: DB_USER
           valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: DB_USER
+            secretKeyRef: {name: app-secrets, key: DB_USER}
         - name: DB_PASSWORD
           valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: DB_PASSWORD
+            secretKeyRef: {name: app-secrets, key: DB_PASSWORD}
         - name: DB_NAME
           valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: DB_NAME
+            secretKeyRef: {name: app-secrets, key: DB_NAME}
         - name: DATABASE_URL
-          value: "postgresql://$(DB_USER):$(DB_PASSWORD)@postgres-service:5432/$(DB_NAME)"
+          value: "postgresql://$(DB_USER):$(DB_PASSWORD)@postgres-service:5432/auth_db"

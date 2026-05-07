@@ -28,11 +28,16 @@ spec:
       labels:
         app: auth-grpc
     spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:1.28
+        command: ['sh', '-c', "until nc -zv postgres-service 5432; do echo waiting for postgres; sleep 2; done;"]
       containers:
       - name: auth-grpc
         # OJO: Por ahora ponemos un nombre genérico. 
         # Cuando vayamos a AWS, aquí irá la URL de Amazon ECR.
-        image: gruops-app_micro-auth-grpc:latest 
+        #image: gruops-app_micro-auth-grpc:latest 
+        image: groupsapp-backend:latest
         imagePullPolicy: Never
         command: ["python3", "-m", "modules.auth.grpc_server"]
         ports:

@@ -26,9 +26,14 @@ spec:
       labels:
         app: groups-grpc
     spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:1.28
+        command: ['sh', '-c', "until nc -zv postgres-service 5432; do echo waiting for postgres; sleep 2; done;"]
       containers:
       - name: groups-grpc
-        image: gruops-app_micro-groups-grpc:latest
+        #image: tu-usuario/gruops-app_micro-groups-grpc:latest
+        image: groupsapp-backend:latest
         imagePullPolicy: Never
         command: ["python3", "-m", "modules.groups.grpc_server"]
         ports:

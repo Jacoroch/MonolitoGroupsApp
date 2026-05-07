@@ -10,6 +10,7 @@ spec:
     - protocol: TCP
       port: 5432
       targetPort: 5432
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -46,3 +47,19 @@ spec:
             secretKeyRef:
               name: app-secrets
               key: DB_NAME
+        # ✅ NUEVA VARIABLE: El script usará esto para saber qué DBs crear
+        - name: POSTGRES_MULTIPLE_DATABASES
+          value: "auth_db,groups_db,messages_db"
+        
+        # ✅ CONFIGURACIÓN DEL VOLUMEN (MONTAJE)
+        volumeMounts:
+        - name: init-script
+          mountPath: /docker-entrypoint-initdb.d/init-multiple-databases.sh
+          subPath: init-multiple-databases.sh
+      
+      # ✅ REFERENCIA AL CONFIGMAP
+      volumes:
+      - name: init-script
+        configMap:
+          name: postgres-init-script
+          defaultMode: 0755 # Permiso de ejecución (rwxr-xr-x)
