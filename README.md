@@ -113,29 +113,68 @@ docker compose down -v
 
 ---
 
-## ☸️ Ejecución en Clúster Local (Kubernetes)
+## 🚀 Despliegue en Entorno Local (Minikube)
 
-El sistema está diseñado para escalar en Kubernetes (Minikube / Kind).
+Esta sección describe los pasos necesarios para desplegar la arquitectura completa de microservicios en un clúster local de Kubernetes.
 
-1. Asegúrate de tener tu clúster local encendido:
-   ```bash
-   minikube start
-   ```
-2. Aplica los manifiestos de configuración y secretos:
-   ```bash
-   kubectl apply -f k8s/configmap.yaml
-   kubectl apply -f k8s/secrets.yaml
-   ```
-3. Levanta la infraestructura base (Postgres, RabbitMQ, Consul):
-   ```bash
-   kubectl apply -f k8s/infra/
-   ```
-4. Levanta los microservicios y el API Gateway:
-   ```bash
-   kubectl apply -f k8s/services/
-   ```
-5. Verifica que los Pods estén corriendo y enrutándose correctamente por Consul:
-   ```bash
-   kubectl get pods
-   kubectl get services
-   ```
+### 1. Requisitos Previos
+* **Minikube** iniciado y corriendo.
+* **Docker** instalado.
+* El clúster de Minikube debe tener suficiente memoria asignada (recomendado 4GB+).
+
+### 2. Configuración del Entorno Docker
+Para que Kubernetes pueda utilizar las imágenes construidas localmente sin necesidad de subirlas a un registro externo (como Docker Hub), se debe enlazar el cliente de Docker con el demonio interno de Minikube.
+
+**Ejecutar en cada terminal nueva destinada a la construcción de imágenes:**
+```bash
+eval $(minikube docker-env)
+```
+
+### 3. Construcción de Imágenes
+Desde la raíz del proyecto, construir las dos imágenes principales del sistema:
+
+```bash
+# Imagen Maestra del Backend (Python)
+docker build -t groupsapp-backend:latest .
+
+# Imagen del Frontend (Next.js)
+docker build -t groupsapp-frontend:latest ./frontend
+```
+
+### 4. Orquestación y Despliegue
+El despliegue se realiza aplicando los manifiestos de Kubernetes. Gracias al uso de **InitContainers**, el orden de inicio de los pods está orquestado de manera resiliente, asegurando que las bases de datos estén listas antes de que los servicios intenten conectarse.
+
+```bash
+# Aplicar todos los manifiestos
+kubectl apply -f k8s/
+```
+
+### 5. Verificación de Salud
+Es vital monitorear el clúster hasta que todos los componentes alcancen el estado `Running`.
+
+```bash
+kubectl get pods -w
+```
+> **Nota:** Los servicios pueden mostrar estados temporales como `Init:0/1` mientras esperan que la inicialización de PostgreSQL finalice. Esto es el comportamiento esperado.
+
+### 6. Acceso a la Aplicación
+Para acceder a los servicios desde el navegador de la máquina host, es necesario habilitar los puentes de red (túneles).
+
+* **Túnel para el API Gateway (Backend):**
+  Mantener esta terminal abierta para permitir el tráfico hacia la API.
+  ```bash
+  kubectl port-forward svc/api-gateway-service 8000:80
+  ```
+
+* **Acceso al Frontend:**
+  Este comando abrirá automáticamente la interfaz web en el navegador.
+  ```bash
+  minikube service frontend-service
+  ```
+
+---
+
+### 📝 Notas Técnicas del Despliegue
+* **Aislamiento de Datos:** Se utiliza un **ConfigMap** (`00-init-db-config.yaml`) que inyecta un script de Bash para automatizar la creación de bases de datos independientes (`auth_db`, `groups_db`, `messages_db`) durante el primer arranque del clúster.
+* **Resiliencia:** El API Gateway y los microservicios implementan **InitContainers** (`wait-for-postgres`) y **Probes (Liveness/Readiness)** para garantizar una inicialización robusta y recuperación automática ante fallos de red.
+* **CORS:** El API Gateway está configurado para aceptar peticiones de origen cruzado desde `http://localhost:3000`.
