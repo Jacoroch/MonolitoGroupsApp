@@ -19,7 +19,7 @@ spec:
       containers:
       - name: messaging-worker
         #image: gruops-app_micro-messaging-worker:latest
-        image: groupsapp-backend:latest
+        image: 297570491771.dkr.ecr.us-east-1.amazonaws.com/groupsapp-backend:latest
         imagePullPolicy: Never
         command: ["python3", "modules/consumers/messaging_worker.py"]
         envFrom:
@@ -42,4 +42,4 @@ spec:
               name: app-secrets
               key: DB_NAME
         - name: DATABASE_URL
-          value: "postgresql://$(DB_USER):$(DB_PASSWORD)@postgres-service:5432/messages_db"
+          value: "postgresql://$(DB_USER):$(DB_PASSWORD)@groups-app-db.cluster-ciphu7kcxcvs.us-east-1.rds.amazonaws.com:5432/auth_db"

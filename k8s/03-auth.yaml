@@ -37,7 +37,7 @@ spec:
         # OJO: Por ahora ponemos un nombre genérico. 
         # Cuando vayamos a AWS, aquí irá la URL de Amazon ECR.
         #image: gruops-app_micro-auth-grpc:latest 
-        image: groupsapp-backend:latest
+        image: 297570491771.dkr.ecr.us-east-1.amazonaws.com/groupsapp-backend:latest
         imagePullPolicy: Never
         command: ["python3", "-m", "modules.auth.grpc_server"]
         ports:

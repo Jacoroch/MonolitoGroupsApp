@@ -17,7 +17,7 @@ spec:
       containers:
       - name: frontend
         # El nombre de la imagen que construiremos localmente
-        image: groupsapp-frontend:latest
+        image: 297570491771.dkr.ecr.us-east-1.amazonaws.com/groupsapp-frontend:latest
         # IMPORTANTE: Esto le dice a K8s que use la imagen local y no la busque en internet
         imagePullPolicy: Never 
         ports:
