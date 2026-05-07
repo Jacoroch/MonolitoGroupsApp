@@ -4,7 +4,7 @@
 - José David Toro
 
 ## Link del video en el que se explica el proyecto:
-https://youtu.be/zVQzvO4BpF4
+https://youtu.be/NnH6eJJHKEc
 
 
 # GroupsApp - Plataforma de Mensajería Distribuida
