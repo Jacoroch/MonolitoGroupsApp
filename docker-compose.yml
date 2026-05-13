@@ -1,13 +1,13 @@
 services:
-  # 1. Base de Datos (Configurada para Multi-DB)
-  postgres:
+  # 1. Base de Datos
+  postgres-service:
     image: postgres:15-alpine
     container_name: postgres-server
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: auth_db # La base de datos principal
-      POSTGRES_MULTIPLE_DATABASES: groups_db,messages_db # Las adicionales
+      POSTGRES_DB: auth_db
+      POSTGRES_MULTIPLE_DATABASES: groups_db,messages_db
     volumes:
       - ./init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh
     ports:
@@ -31,7 +31,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # 3. Auth (Usa auth_db)
+  # 3. Auth
   auth-grpc:
     build: .
     container_name: auth-grpc-server
@@ -39,16 +39,17 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/auth_db
-      - CONSUL_HOST=consul-server  # <--- Agregado
-      - CONSUL_PORT=8500           # <--- Agregado
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres-service:5432/auth_db
+      - AUTH_DB_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres-service:5432/auth_db
+      - CONSUL_HOST=consul-server
+      - CONSUL_PORT=8500
     depends_on:
-      postgres:
+      postgres-service:
         condition: service_healthy
-      consul:                      # <--- Agregado
+      consul:
         condition: service_started
 
-  # 4. Grupos (Usa groups_db)
+  # 4. Grupos
   groups-grpc:
     build: .
     container_name: groups-grpc-server
@@ -56,16 +57,17 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/groups_db
-      - CONSUL_HOST=consul-server  # <--- Agregado
-      - CONSUL_PORT=8500           # <--- Agregado
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres-service:5432/groups_db
+      - GROUPS_DB_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres-service:5432/groups_db
+      - CONSUL_HOST=consul-server
+      - CONSUL_PORT=8500
     depends_on:
-      postgres:
+      postgres-service:
         condition: service_healthy
-      consul:                      # <--- Agregado
+      consul:
         condition: service_started
 
-  # 5. Worker (Usa messages_db)
+  # 5. Worker
   messaging-worker:
     build: .
     container_name: messaging-worker
@@ -73,16 +75,17 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/messages_db
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres-service:5432/messages_db
+      - MESSAGES_DB_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres-service:5432/messages_db
       - GROUPS_SERVER_URL=groups-grpc-server:50052  
       - RABBITMQ_HOST=rabbitmq-server
     depends_on:
-      postgres:
+      postgres-service:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
 
-  # 6. API Gateway (Punto de entrada)
+  # 6. API Gateway
   api-gateway:
     build: .
     container_name: fastapi-gateway
@@ -92,17 +95,19 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/auth_db
+      - AUTH_DB_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres-service:5432/auth_db
+      - GROUPS_DB_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres-service:5432/groups_db
+      - MESSAGES_DB_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres-service:5432/messages_db
       - AUTH_SERVER_URL=auth-grpc-server:50051      
       - GROUPS_SERVER_URL=groups-grpc-server:50052  
       - PRESENCE_SERVER_URL=presence-grpc-server:50053 
       - RABBITMQ_HOST=rabbitmq-server
-      - CONSUL_HOST=consul-server  # <--- Agregado
-      - CONSUL_PORT=8500           # <--- Agregado
+      - CONSUL_HOST=consul-server
+      - CONSUL_PORT=8500
     depends_on:
-      postgres:
+      postgres-service:
         condition: service_healthy
-      consul:                      # <--- Agregado
+      consul:
         condition: service_started
 
   # 7. Servicio de Presencia 
@@ -113,13 +118,13 @@ services:
     env_file:
       - .env
     environment:
-      - CONSUL_HOST=consul-server  # <--- Agregado
-      - CONSUL_PORT=8500           # <--- Agregado
-    depends_on:                    # <--- Agregado
+      - CONSUL_HOST=consul-server
+      - CONSUL_PORT=8500
+    depends_on:
       consul:
         condition: service_started
 
-  # 8. Frontend (Next.js)
+  # 8. Frontend
   frontend:
     build: 
       context: ./frontend 
@@ -132,7 +137,7 @@ services:
     depends_on:
       - api-gateway
 
-  # 9. Servicio de Coordinación (Service Discovery)
+  # 9. Consul
   consul:
     image: consul:1.15
     container_name: consul-server
