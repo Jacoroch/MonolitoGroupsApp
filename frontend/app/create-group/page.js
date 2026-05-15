@@ -8,7 +8,7 @@ import { createGroup, addUserToGroup } from "@/lib/api";
 export default function CreateGroupPage() {
   const router = useRouter();
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://0.0.0.0:8000";
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   const [token, setToken] = useState(null);
   const [groupData, setGroupData] = useState({ name: "", description: "" });

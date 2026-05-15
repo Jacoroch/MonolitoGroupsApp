@@ -16,7 +16,7 @@ function EditGroupContent() {
   const [loading, setLoading] = useState(true);
 
   // ✅ CORREGIDO: Declaramos la variable de entorno al inicio del componente
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://0.0.0.0:8000";
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
